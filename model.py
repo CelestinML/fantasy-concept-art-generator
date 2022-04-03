@@ -184,7 +184,15 @@ class PrepaData():
                     l_x.append(chemin)
 
                 for j in range(len(l_x)):
-                    img = cv2.imread(l_x[j])
+
+                    try:
+                        img = cv2.imread(l_x[j], cv2.IMREAD_UNCHANGED)
+                        alphachannel = img[:, :, 3]
+                        _, mask = cv2.threshold(alphachannel, 254, 255, cv2.THRESH_BINARY)  # binarize mask
+                        color = img[:, :, :3]
+                        img = cv2.bitwise_not(cv2.bitwise_not(color, mask=mask))
+                    except:
+                        img = cv2.imread(l_x[j])
 
                     #Apply preprocessing
 
@@ -227,7 +235,16 @@ class PrepaData():
                     l_x.append(chemin)
 
                 for j in range(len(l_x)):
-                    img = cv2.imread(l_x[j])
+
+                    try:
+                        img = cv2.imread(l_x[j], cv2.IMREAD_UNCHANGED)
+                        alphachannel = img[:, :, 3]
+                        _, mask = cv2.threshold(alphachannel, 254, 255, cv2.THRESH_BINARY)  # binarize mask
+                        color = img[:, :, :3]
+                        img = cv2.bitwise_not(cv2.bitwise_not(color, mask=mask))
+                    except:
+                        img = cv2.imread(l_x[j])
+
                     # Apply preprocessing
 
                     if preprocess == Preprocess.SHADES_OF_GRAY:
@@ -405,7 +422,7 @@ class MachineLearningClassifier(PrepaData):
         self.generator.add(Dense(128))
         self.generator.add(LeakyReLU(alpha=0.2))
         self.generator.add(BatchNormalization(momentum=0.8))
-        self.generator.add(Dense(img_width * img_height))
+        self.generator.add(Dense(img_width * img_height * nb_canaux))
         self.generator.add(Reshape([img_height,img_width,nb_canaux]))
 
         self.discriminator = Sequential()
@@ -472,7 +489,10 @@ class MachineLearningClassifier(PrepaData):
 
                 for k in range(samples):
                     plt.subplot(2, 5, k+1)
-                    plt.imshow(x_fake[k].reshape(img_height, img_width), cmap='gray')
+                    if nb_canaux == 3:
+                        plt.imshow(x_fake[k].reshape(img_height, img_width, nb_canaux))
+                    else:
+                        plt.imshow(x_fake[k].reshape(img_height, img_width), cmap='gray')
                     plt.xticks([])
                     plt.yticks([])
 
