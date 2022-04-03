@@ -428,7 +428,7 @@ class MachineLearningClassifier(PrepaData):
 
         self.GAN.compile(optimizer='adam',loss='binary_crossentropy')
 
-    def gan_suite(self, batch_size, noise_shape):
+    def gan_suite(self, batch_size, noise_shape, save):
         img_width, img_height, nb_canaux = self.img_shape[0], self.img_shape[1], self.img_shape[2]
 
         for epoch in range(self.epochs):
@@ -468,7 +468,7 @@ class MachineLearningClassifier(PrepaData):
             #plotting generated images at the start and then after every 10 epoch
             if epoch % (self.epochs // 4) == 0:
                 samples = 10
-                x_fake = self.generator.predict(np.random.normal(loc=0, scale=1, size=(samples, 100)))
+                x_fake = self.generator.predict(np.random.normal(loc=0, scale=1, size=(samples, noise_shape)))
 
                 for k in range(samples):
                     plt.subplot(2, 5, k+1)
@@ -476,7 +476,9 @@ class MachineLearningClassifier(PrepaData):
                     plt.xticks([])
                     plt.yticks([])
 
+                chemin = './images/' + save + '_' + str(epoch) + '.png'
                 plt.tight_layout()
+                plt.savefig(chemin)
                 plt.show()
 
                 
