@@ -191,18 +191,16 @@ class PrepaData():
                     if preprocess == Preprocess.SHADES_OF_GRAY:
                         img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
                     elif preprocess == Preprocess.OUTLINES:
-                        contours1, hierarchy1 = cv2.findContours(img, mode=cv2.RETR_TREE,
-                                                                 method=cv2.CHAIN_APPROX_NONE,
-                                                                 offset=(0, 0))
-                        cv2.drawContours(img, contours1, -1, (255, 255, 255), 3)
+                        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+                        ret, img = cv2.threshold(img, 200, 255, 0)
+                        contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                        cv2.drawContours(img, contours, -1, 0, 1)
 
                     #Resize the image
 
-                    cv2.imshow('image', img)
-
                     img_width, img_height, nb_canaux = self.img_shape[0], self.img_shape[1], self.img_shape[2]
                     img = np.array([cv2.resize(img, (img_width, img_height))])
-                    x.append(img)  # car dans le cas de notre problème, on ne veut que des images en niveau de gris
+                    x.append(img / 255)  # car dans le cas de notre problème, on ne veut que des images en niveau de gris
 
                 for j in range(len(l_x)):
                     y.append(i)
@@ -230,11 +228,19 @@ class PrepaData():
 
                 for j in range(len(l_x)):
                     img = cv2.imread(l_x[j])
-                    img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-                    img = cv2.bitwise_not(img)  # On inverse les couleurs
+                    # Apply preprocessing
+
+                    if preprocess == Preprocess.SHADES_OF_GRAY:
+                        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+                    elif preprocess == Preprocess.OUTLINES:
+                        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+                        ret, img = cv2.threshold(img, 200, 255, 0)
+                        contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                        cv2.drawContours(img, contours, -1, 0, 1)
+
                     img_width, img_height, nb_canaux = self.img_shape[0], self.img_shape[1], self.img_shape[2]
                     img = np.array([cv2.resize(img, (img_width, img_height))])
-                    x.append(img)  # car dans le cas de notre problème, on ne veut que des images en niveau de gris
+                    x.append(img / 255)  # car dans le cas de notre problème, on ne veut que des images en niveau de gris
                 for j in range(len(l_x)):
                     y.append(i)
 
@@ -266,11 +272,10 @@ class PrepaData():
             self.input_shape = (nb_canaux, img_width, img_height)
         else:
             self.input_shape = (img_width, img_height, nb_canaux)
-        for i in range(len(self.X)):
-            self.X_df.append(pd.Series(self.X[i].flatten()), ignore_index=True)
-        self.X_df = self.X_df.values
-        self.X_df = self.X_df.reshape(-1, img_width, img_height, nb_canaux)
-        self.X_df = self.X_df / 255
+
+        self.X_df = np.array(self.X).reshape(-1, img_width, img_height, nb_canaux)
+        #self.X_df = self.X_df.reshape(-1, img_width, img_height, nb_canaux)
+        #self.X_df = self.X_df / 255
 
 
 # ----------------------------------------------------------------------------------------------------# 100 -
@@ -466,8 +471,7 @@ class MachineLearningClassifier(PrepaData):
                 d_g_loss_batch = self.GAN.train_on_batch(noise, train_label)
 
             # plotting generated images at the start and then after every 4 epoch
-            # if epoch % 10 == 0:
-            if epoch % 4 == 0:
+            if epoch % self.epochs / 4 == 0:
                 samples = 10
                 x_fake = self.generator.predict(np.random.normal(loc=0, scale=1, size=(samples, 100)))
 
