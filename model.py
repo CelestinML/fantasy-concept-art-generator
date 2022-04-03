@@ -387,7 +387,7 @@ class MachineLearningClassifier(PrepaData):
     ########################
     ########################
 
-    def gan(self):
+    def gan(self, noise_shape):
         img_width, img_height, nb_canaux = self.img_shape[0], self.img_shape[1], self.img_shape[2]
 
         if K.image_data_format() == 'channels_first':
@@ -396,7 +396,7 @@ class MachineLearningClassifier(PrepaData):
             self.input_shape = (img_width, img_height, nb_canaux)
 
         self.generator = Sequential()
-        self.generator.add(Dense(512, input_shape=[100]))
+        self.generator.add(Dense(512,input_shape=[noise_shape]))
         self.generator.add(LeakyReLU(alpha=0.2))
         self.generator.add(BatchNormalization(momentum=0.8))
         self.generator.add(Dense(256))
@@ -406,10 +406,10 @@ class MachineLearningClassifier(PrepaData):
         self.generator.add(LeakyReLU(alpha=0.2))
         self.generator.add(BatchNormalization(momentum=0.8))
         self.generator.add(Dense(img_width * img_height))
-        self.generator.add(Reshape([img_width, img_height, nb_canaux]))
+        self.generator.add(Reshape([img_height,img_width,nb_canaux]))
 
         self.discriminator = Sequential()
-        self.discriminator.add(Dense(1, input_shape=[img_width, img_height, 1, nb_canaux]))
+        self.discriminator.add(Dense(1,input_shape=[img_height,img_width,nb_canaux]))
         self.discriminator.add(Flatten())
         self.discriminator.add(Dense(256))
         self.discriminator.add(LeakyReLU(alpha=0.2))
@@ -420,71 +420,69 @@ class MachineLearningClassifier(PrepaData):
         self.discriminator.add(Dense(64))
         self.discriminator.add(LeakyReLU(alpha=0.2))
         self.discriminator.add(Dropout(0.5))
-        self.discriminator.add(Dense(1, activation='sigmoid'))
+        self.discriminator.add(Dense(1,activation='sigmoid'))
 
-        self.GAN = Sequential([self.generator, self.discriminator])
-        self.discriminator.compile(optimizer='adam', loss='binary_crossentropy')
+        self.GAN =Sequential([self.generator, self.discriminator])
+        self.discriminator.compile(optimizer='adam',loss='binary_crossentropy')
         self.discriminator.trainable = False
 
-        self.GAN.compile(optimizer='adam', loss='binary_crossentropy')
+        self.GAN.compile(optimizer='adam',loss='binary_crossentropy')
 
     def gan_suite(self, batch_size, noise_shape):
         img_width, img_height, nb_canaux = self.img_shape[0], self.img_shape[1], self.img_shape[2]
 
-        if K.image_data_format() == 'channels_first':
-            self.input_shape = (nb_canaux, img_width, img_height)
-        else:
-            self.input_shape = (img_width, img_height, nb_canaux)
-
-        epochs = self.epochs
-        batch_size = batch_size
-        noise_shape = noise_shape
-
-        for epoch in range(epochs):
-            print(f"Currently on Epoch {epoch + 1}")
-
-            for i in range(self.X_df.shape[0] // batch_size):
-
-                if (i + 1) % 50 == 0:
-                    print(f"\tCurrently on batch number {i + 1} of {self.X_df.shape[0] // batch_size}")
-
-                noise = np.random.normal(size=[batch_size, noise_shape])
-
+        for epoch in range(self.epochs):
+            print(f"Currently on Epoch {epoch+1}")
+            
+            
+            for i in range(self.X_df.shape[0]//batch_size):
+                if (i+1)%50 == 0:
+                    print(f"\tCurrently on batch number {i+1} of {self.X_df.shape[0]//batch_size}")
+                    
+                noise=np.random.normal(size=[batch_size,noise_shape])
+                
                 gen_image = self.generator.predict_on_batch(noise)
-
-                train_dataset = self.X_df[i * batch_size:(i + 1) * batch_size]
-
-                # training discriminator on real images
-                train_label = np.ones(shape=(batch_size, 1))
+                
+                train_dataset = self.X_df[i*batch_size:(i+1)*batch_size]
+                
+                #training discriminator on real images
+                train_label=np.ones(shape=(batch_size,1))
                 self.discriminator.trainable = True
-                d_loss_real = self.discriminator.train_on_batch(train_dataset, train_label)
-
-                # training discriminator on fake images
-                train_label = np.zeros(shape=(batch_size, 1))
-                d_loss_fake = self.discriminator.train_on_batch(gen_image, train_label)
-
-                # training generator
-                noise = np.random.normal(size=[batch_size, noise_shape])
-                train_label = np.ones(shape=(batch_size, 1))
+                d_loss_real=self.discriminator.train_on_batch(train_dataset,train_label)
+                
+                #training discriminator on fake images
+                train_label=np.zeros(shape=(batch_size,1))
+                d_loss_fake=self.discriminator.train_on_batch(gen_image,train_label)
+                
+                
+                #training generator 
+                noise=np.random.normal(size=[batch_size,noise_shape])
+                train_label=np.ones(shape=(batch_size,1))
                 self.discriminator.trainable = False
-
-                d_g_loss_batch = self.GAN.train_on_batch(noise, train_label)
-
-            # plotting generated images at the start and then after every 4 epoch
-            if epoch % self.epochs / 4 == 0:
+                
+                d_g_loss_batch =self.GAN.train_on_batch(noise, train_label)
+                
+                
+                
+                
+            #plotting generated images at the start and then after every 10 epoch
+            if epoch % (self.epochs // 4) == 0:
                 samples = 10
                 x_fake = self.generator.predict(np.random.normal(loc=0, scale=1, size=(samples, 100)))
 
                 for k in range(samples):
-                    plt.subplot(2, 5, k + 1)
-                    plt.imshow(x_fake[k].reshape(img_width, img_height), cmap='gray')
+                    plt.subplot(2, 5, k+1)
+                    plt.imshow(x_fake[k].reshape(img_height, img_width), cmap='gray')
                     plt.xticks([])
                     plt.yticks([])
 
                 plt.tight_layout()
                 plt.show()
 
+                
+                
         print('Training is complete')
+
 
     def save_generator(self):
         """Save the model in order to use it later"""
