@@ -14,6 +14,13 @@ from keras.layers import Dropout, Flatten, Dense, LeakyReLU, BatchNormalization,
     Reshape
 from keras import backend as K
 
+from enum import Enum
+
+class Preprocess(Enum):
+    NONE = 1
+    SHADES_OF_GRAY = 2
+    OUTLINES = 3
+
 class PrepaData():
     """ Manage data preparation.
 
@@ -136,7 +143,7 @@ class PrepaData():
         self.X = preprocessing.normalize(self.X)
         return None
 
-    def load_data(self):
+    def load_data(self, preprocess=Preprocess.SHADES_OF_GRAY):
         """Load data into X and y"""
         x = []
         y = []
@@ -178,10 +185,25 @@ class PrepaData():
 
                 for j in range(len(l_x)):
                     img = cv2.imread(l_x[j])
-                    img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+                    #Apply preprocessing
+
+                    if preprocess == Preprocess.SHADES_OF_GRAY:
+                        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+                    elif preprocess == Preprocess.OUTLINES:
+                        contours1, hierarchy1 = cv2.findContours(img, mode=cv2.RETR_TREE,
+                                                                 method=cv2.CHAIN_APPROX_NONE,
+                                                                 offset=(0, 0))
+                        cv2.drawContours(img, contours1, -1, (255, 255, 255), 3)
+
+                    #Resize the image
+
+                    cv2.imshow('image', img)
+
                     img_width, img_height, nb_canaux = self.img_shape[0], self.img_shape[1], self.img_shape[2]
                     img = np.array([cv2.resize(img, (img_width, img_height))])
                     x.append(img)  # car dans le cas de notre problème, on ne veut que des images en niveau de gris
+
                 for j in range(len(l_x)):
                     y.append(i)
 
