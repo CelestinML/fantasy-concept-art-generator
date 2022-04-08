@@ -10,8 +10,7 @@ from sklearn.model_selection import train_test_split
 
 import keras
 from keras.models import Sequential
-from keras.layers import Dropout, Flatten, Dense, LeakyReLU, BatchNormalization, \
-    Reshape
+from keras.layers import Dropout, Flatten, Dense, LeakyReLU, BatchNormalization, Reshape, Conv2D, Conv2DTranspose
 from keras import backend as K
 
 from enum import Enum
@@ -210,7 +209,6 @@ class PrepaData():
                     img = np.array([cv2.resize(img, (img_width, img_height))])
                     x.append(img / 255)  # car dans le cas de notre problème, on ne veut que des images en niveau de gris
 
-                for j in range(len(l_x)):
                     y.append(i)
 
             self.X = x
@@ -404,7 +402,7 @@ class MachineLearningClassifier(PrepaData):
     ########################
     ########################
 
-    def gan(self, noise_shape):
+    def gan(self, noise_shape) :
         img_width, img_height, nb_canaux = self.img_shape[0], self.img_shape[1], self.img_shape[2]
 
         if K.image_data_format() == 'channels_first':
@@ -423,7 +421,7 @@ class MachineLearningClassifier(PrepaData):
         self.generator.add(LeakyReLU(alpha=0.2))
         self.generator.add(BatchNormalization(momentum=0.8))
         self.generator.add(Dense(img_width * img_height * nb_canaux))
-        self.generator.add(Reshape([img_height,img_width,nb_canaux]))
+        self.generator.add(Reshape([img_width,img_height,nb_canaux]))
 
         self.discriminator = Sequential()
         self.discriminator.add(Dense(1,input_shape=[img_height,img_width,nb_canaux]))
@@ -438,6 +436,54 @@ class MachineLearningClassifier(PrepaData):
         self.discriminator.add(LeakyReLU(alpha=0.2))
         self.discriminator.add(Dropout(0.5))
         self.discriminator.add(Dense(1,activation='sigmoid'))
+
+        self.GAN =Sequential([self.generator, self.discriminator])
+        self.discriminator.compile(optimizer='adam',loss='binary_crossentropy')
+        self.discriminator.trainable = False
+
+        self.GAN.compile(optimizer='adam',loss='binary_crossentropy')
+
+    def gan_conv(self, noise_shape):
+        img_width, img_height, nb_canaux = self.img_shape[0], self.img_shape[1], self.img_shape[2]
+
+        if K.image_data_format() == 'channels_first':
+            self.input_shape = (nb_canaux, img_width, img_height)
+        else:
+            self.input_shape = (img_width, img_height, nb_canaux)
+
+        # Generator declaration
+        self.generator = Sequential()
+    
+        n = img_width // 4
+        
+        self.generator.add(Dense(n * n * 256, use_bias=False, input_shape=(noise_shape,)))
+        self.generator.add(BatchNormalization())
+        self.generator.add(LeakyReLU())
+
+        self.generator.add(Reshape((n, n, 256)))
+
+        self.generator.add(Conv2DTranspose(128, (5, 5), strides=(1, 1), padding='same', use_bias=False))
+        self.generator.add(BatchNormalization())
+        self.generator.add(LeakyReLU())
+
+        self.generator.add(Conv2DTranspose(64, (5, 5), strides=(2, 2), padding='same', use_bias=False))
+        self.generator.add(BatchNormalization())
+        self.generator.add(LeakyReLU())
+
+        self.generator.add(Conv2DTranspose(nb_canaux, (5, 5), strides=(2, 2), padding='same', use_bias=False, activation='tanh'))
+
+        # Discrimination declaration
+        self.discriminator = Sequential()
+        self.discriminator.add(Conv2D(64, (5, 5), strides=(2, 2), padding='same', input_shape=(img_width, img_height, nb_canaux)))
+        self.discriminator.add(LeakyReLU())
+        self.discriminator.add(Dropout(0.3))
+
+        self.discriminator.add(Conv2D(128, (5, 5), strides=(2, 2), padding='same'))
+        self.discriminator.add(LeakyReLU())
+        self.discriminator.add(Dropout(0.3))
+
+        self.discriminator.add(Flatten())
+        self.discriminator.add(Dense(1))
 
         self.GAN =Sequential([self.generator, self.discriminator])
         self.discriminator.compile(optimizer='adam',loss='binary_crossentropy')
