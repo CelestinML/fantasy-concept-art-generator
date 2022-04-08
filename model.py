@@ -20,7 +20,11 @@ from enum import Enum
 class Preprocess(Enum):
     NONE = 1
     OUTLINES = 2
-
+    LEFT_ROTATE = 3
+    RIGHT_ROTATE = 4
+    ROTATE_180 = 5
+    HORIZONTAL_FLIP = 6
+    VERTICAL_FLIP = 7
 
 class PrepaData():
     """ Manage data preparation.
@@ -270,9 +274,22 @@ class PrepaData():
                             # Find Canny edges
                             img = cv2.Canny(img, 30, 200)
                             img = cv2.bitwise_not(img)
-
-                            plt.imshow(img, cmap='gray')
-                            plt.show()
+                        elif preprocess == Preprocess.RIGHT_ROTATE:
+                            image_center = tuple(np.array(img.shape[1::-1]) / 2)
+                            rot_mat = cv2.getRotationMatrix2D(image_center, -90, 1.0)
+                            img = cv2.warpAffine(img, rot_mat, img.shape[1::-1], flags=cv2.INTER_LINEAR)
+                        elif preprocess == Preprocess.LEFT_ROTATE:
+                            image_center = tuple(np.array(img.shape[1::-1]) / 2)
+                            rot_mat = cv2.getRotationMatrix2D(image_center, 90, 1.0)
+                            img = cv2.warpAffine(img, rot_mat, img.shape[1::-1], flags=cv2.INTER_LINEAR)
+                        elif preprocess == Preprocess.ROTATE_180:
+                            image_center = tuple(np.array(img.shape[1::-1]) / 2)
+                            rot_mat = cv2.getRotationMatrix2D(image_center, 180, 1.0)
+                            img = cv2.warpAffine(img, rot_mat, img.shape[1::-1], flags=cv2.INTER_LINEAR)
+                        elif preprocess == Preprocess.HORIZONTAL_FLIP:
+                            img = cv2.flip(img, 1)
+                        elif preprocess == Preprocess.VERTICAL_FLIP:
+                            img = cv2.flip(img, 0)
 
                         # Resize the image
 
