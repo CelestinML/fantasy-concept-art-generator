@@ -501,15 +501,15 @@ class MachineLearningClassifier(PrepaData):
 
         self.generator.add(Reshape((n, n, 256)))
 
-        self.generator.add(Conv2DTranspose(128, (5, 5), strides=(1, 1), padding='same', use_bias=False))
+        self.generator.add(Conv2DTranspose(128, (2, 2), strides=(1, 1), padding='same', use_bias=False))
         self.generator.add(BatchNormalization())
         self.generator.add(LeakyReLU())
 
-        self.generator.add(Conv2DTranspose(64, (5, 5), strides=(2, 2), padding='same', use_bias=False))
+        self.generator.add(Conv2DTranspose(64, (2, 2), strides=(2, 2), padding='same', use_bias=False))
         self.generator.add(BatchNormalization())
         self.generator.add(LeakyReLU())
 
-        self.generator.add(Conv2DTranspose(nb_canaux, (5, 5), strides=(2, 2), padding='same', use_bias=False, activation='tanh'))
+        self.generator.add(Conv2DTranspose(nb_canaux, (2, 2), strides=(2, 2), padding='same', use_bias=False, activation='tanh'))
 
         # Discrimination declaration
         self.discriminator = Sequential()
@@ -579,7 +579,7 @@ class MachineLearningClassifier(PrepaData):
                 chemin = './images/' + save + '_' + str(epoch) + '.png'
                 plt.tight_layout()
                 plt.savefig(chemin)
-                plt.show()
+                #plt.show()
 
         print('Training is complete')
 
