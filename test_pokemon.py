@@ -9,6 +9,19 @@ import PIL
 from tensorflow.keras import layers
 import time
 from IPython import display
+import cv2
+import sys
+
+from enum import Enum
+
+class Preprocess(Enum):
+    NONE = 1
+    LEFT_ROTATE = 2
+    RIGHT_ROTATE = 3
+    ROTATE_180 = 4
+    HORIZONTAL_FLIP = 5
+    VERTICAL_FLIP = 6
+
 
 BATCH_SIZE = 128
 IMAGE_SIZE = 120  # reduce this to increase performance
@@ -182,16 +195,67 @@ def generate_and_save_images(model, epoch, test_input, show=False, save=True):
         plt.show()
 
 
-def train_model(dataset_path, model_name, epochs, save_after):
+def apply_preprocess(dataset_path, preprocesses):
 
-    list_ds = tf.data.Dataset.list_files(str(dataset_path + '/*'), shuffle=True)  # Get all images from subfolders
+    # create the temporary folder if not exist
+    temp_dir_path = './temp'
+    if not os.path.exists(temp_dir_path):
+        os.mkdir(temp_dir_path)
+    else:
+        for f in os.listdir(temp_dir_path):
+            os.remove(os.path.join(temp_dir_path, f))
+
+    # calculate the minimum dimensions
+    min_width = sys.maxsize
+    min_height = sys.maxsize
+    for imageName in os.listdir(dataset_path):
+        img = cv2.imread(dataset_path + '/' + imageName, cv2.IMREAD_UNCHANGED)
+        min_width = min(min_width, img.shape[1])
+        min_height = min(min_height, img.shape[0])
+    dim = (min_width, min_height)
+
+    for imageName in os.listdir(dataset_path):
+        img = cv2.imread(dataset_path + '/' + imageName, cv2.IMREAD_UNCHANGED)
+        # resize image
+        img = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
+        # save the image
+        cv2.imwrite(temp_dir_path + '/' + imageName, img)
+
+        for preprocess in preprocesses:
+            if preprocess == Preprocess.RIGHT_ROTATE:
+                image_center = tuple(np.array(img.shape[1::-1]) / 2)
+                rot_mat = cv2.getRotationMatrix2D(image_center, -90, 1.0)
+                modified_img = cv2.warpAffine(img, rot_mat, img.shape[1::-1], flags=cv2.INTER_LINEAR)
+            elif preprocess == Preprocess.LEFT_ROTATE:
+                image_center = tuple(np.array(img.shape[1::-1]) / 2)
+                rot_mat = cv2.getRotationMatrix2D(image_center, 90, 1.0)
+                modified_img = cv2.warpAffine(img, rot_mat, img.shape[1::-1], flags=cv2.INTER_LINEAR)
+            elif preprocess == Preprocess.ROTATE_180:
+                image_center = tuple(np.array(img.shape[1::-1]) / 2)
+                rot_mat = cv2.getRotationMatrix2D(image_center, 180, 1.0)
+                modified_img = cv2.warpAffine(img, rot_mat, img.shape[1::-1], flags=cv2.INTER_LINEAR)
+            elif preprocess == Preprocess.HORIZONTAL_FLIP:
+                modified_img = cv2.flip(img, 1)
+            elif preprocess == Preprocess.VERTICAL_FLIP:
+                modified_img = cv2.flip(img, 0)
+            # save the modified img
+            cv2.imwrite(temp_dir_path + '/' + str(preprocess) + '-' + imageName, modified_img)
+
+    return temp_dir_path
+
+
+def train_model(dataset_path, model_name, epochs, save_after, preprocesses=[]):
+
+    temp_dir_path = apply_preprocess(dataset_path, preprocesses)
+
+    list_ds = tf.data.Dataset.list_files(str(temp_dir_path + '/*'), shuffle=True)  # Get all images from subfolders
     train_dataset = list_ds.take(-1)
     # Set `num_parallel_calls` so multiple images are loaded/processed in parallel.
     train_dataset = train_dataset.map(preprocess, num_parallel_calls=AUTOTUNE)
     train_dataset = configure_for_performance(train_dataset)
 
     train(train_dataset, epochs, save_after, model_name)
-
+    
 
 def test_model(model_path):
     model = tf.keras.models.load_model(model_path)
@@ -199,5 +263,5 @@ def test_model(model_path):
     generate_and_save_images(model, -1, seed, True, False)
 
 
-#train_model(dataset_path='./dataset_pokemon', model_name='test_pokemon3', epochs=10, save_after=1)
-test_model("./modeles/test_pokemon3")
+train_model(dataset_path='./dataset_pokemon', model_name='test_pokemon4', epochs=10, save_after=1, preprocesses=[Preprocess.HORIZONTAL_FLIP])
+#test_model("./modeles/test_pokemon3")
