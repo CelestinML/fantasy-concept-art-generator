@@ -157,7 +157,7 @@ def train(dataset, epochs, save_after, model_name):
                              seed)
 
 
-def generate_and_save_images(model, epoch, test_input):
+def generate_and_save_images(model, epoch, test_input, show=False, save=True):
     # Notice `training` is set to False.
     # This is so all layers run in inference mode (batchnorm).
     predictions = model(test_input, training=False)
@@ -173,10 +173,13 @@ def generate_and_save_images(model, epoch, test_input):
             plt.imshow(predictions[i, :, :, 0] * 0.5 + .5,
                        cmap='gray')  # scale image to [0, 1] floats (or you could also scale to [0, 255] ints)
         plt.axis('off')
-    plt.suptitle(f'Epoch {epoch}')
     output_folder = './images/'
-    plt.savefig(output_folder + 'image_at_epoch_{:04d}.png'.format(epoch))
-    # plt.show()
+
+    if save:
+        plt.savefig(output_folder + 'image_at_epoch_{:04d}.png'.format(epoch))
+
+    if show:
+        plt.show()
 
 
 def train_model(dataset_path, model_name, epochs, save_after):
@@ -190,4 +193,11 @@ def train_model(dataset_path, model_name, epochs, save_after):
     train(train_dataset, epochs, save_after, model_name)
 
 
-train_model(dataset_path='./dataset_pokemon', model_name='test_pokemon3', epochs=10, save_after=1)
+def test_model(model_path):
+    model = tf.keras.models.load_model(model_path)
+
+    generate_and_save_images(model, -1, seed, True, False)
+
+
+#train_model(dataset_path='./dataset_pokemon', model_name='test_pokemon3', epochs=10, save_after=1)
+test_model("./modeles/test_pokemon3")
