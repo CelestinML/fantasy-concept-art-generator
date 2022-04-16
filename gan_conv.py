@@ -255,7 +255,7 @@ def train_model(dataset_path, model_name, epochs, save_after, preprocesses=[]):
     train_dataset = configure_for_performance(train_dataset)
 
     train(train_dataset, epochs, save_after, model_name)
-    
+
 
 def test_model(model_path):
     model = tf.keras.models.load_model(model_path)
