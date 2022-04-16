@@ -10,7 +10,6 @@ from tensorflow.keras import layers
 import time
 from IPython import display
 
-
 BATCH_SIZE = 128
 IMAGE_SIZE = 120  # reduce this to increase performance
 IMAGE_CHANNELS = 3  # can be 3 (RGB) or 1 (Grayscale)
@@ -44,7 +43,8 @@ def configure_for_performance(ds):
     return ds
 
 
-list_ds = tf.data.Dataset.list_files(str('./dataset_pokemon/images/*/*'), shuffle=True)  # Get all images from subfolders
+list_ds = tf.data.Dataset.list_files(str('./dataset_pokemon/images/*/*'),
+                                     shuffle=True)  # Get all images from subfolders
 train_dataset = list_ds.take(-1)
 # Set `num_parallel_calls` so multiple images are loaded/processed in parallel.
 train_dataset = train_dataset.map(preprocess, num_parallel_calls=AUTOTUNE)
@@ -75,9 +75,11 @@ def make_generator_model():
 
     return model
 
+
 def make_discriminator_model():
     model = tf.keras.Sequential()
-    model.add(layers.Conv2D(64, (5, 5), strides=(2, 2), padding='same', input_shape=(IMAGE_SIZE, IMAGE_SIZE, IMAGE_CHANNELS)))
+    model.add(
+        layers.Conv2D(64, (5, 5), strides=(2, 2), padding='same', input_shape=(IMAGE_SIZE, IMAGE_SIZE, IMAGE_CHANNELS)))
     model.add(layers.LeakyReLU())
     model.add(layers.Dropout(0.3))
 
@@ -90,6 +92,7 @@ def make_discriminator_model():
 
     return model
 
+
 generator_optimizer = tf.keras.optimizers.Adam(1e-4)
 discriminator_optimizer = tf.keras.optimizers.Adam(1e-4)
 
@@ -98,14 +101,18 @@ generator = make_generator_model()
 
 # This method returns a helper function to compute cross entropy loss
 cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+
+
 def discriminator_loss(real_output, fake_output):
     real_loss = cross_entropy(tf.ones_like(real_output), real_output)
     fake_loss = cross_entropy(tf.zeros_like(fake_output), fake_output)
     total_loss = real_loss + fake_loss
     return total_loss
 
+
 def generator_loss(fake_output):
     return cross_entropy(tf.ones_like(fake_output), fake_output)
+
 
 # Notice the use of `tf.function`
 # This annotation causes the function to be "compiled".
@@ -114,7 +121,8 @@ def train_step(images):
     noise = tf.random.normal([BATCH_SIZE, LATENT_SPACE_DIM])
 
     with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-        generated_images = generator(noise, training=True)  # training=True is important, sicne Dropout and BatchNorm behave differently during inference
+        generated_images = generator(noise,
+                                     training=True)  # training=True is important, sicne Dropout and BatchNorm behave differently during inference
 
         real_output = discriminator(images, training=True)
         fake_output = discriminator(generated_images, training=True)
@@ -134,7 +142,9 @@ num_examples_to_generate = 16
 # to visualize progress in the animated GIF)
 seed = tf.random.normal([num_examples_to_generate, LATENT_SPACE_DIM])
 
-def train(dataset, epochs, save_after):
+
+def train(dataset, epochs, save_after, model_name):
+    generator.save(r"./modeles/" + model_name)
     generate_and_save_images(generator,
                              0,
                              seed)
@@ -156,6 +166,9 @@ def train(dataset, epochs, save_after):
                              epochs,
                              seed)
 
+
+
+
 def generate_and_save_images(model, epoch, test_input):
     # Notice `training` is set to False.
     # This is so all layers run in inference mode (batchnorm).
@@ -166,13 +179,16 @@ def generate_and_save_images(model, epoch, test_input):
     for i in range(predictions.shape[0]):
         plt.subplot(4, 4, i + 1)
         if predictions.shape[-1] == 3:
-            plt.imshow(predictions[i] * 0.5 + .5)  # scale image to [0, 1] floats (or you could also scale to [0, 255] ints)
+            plt.imshow(
+                predictions[i] * 0.5 + .5)  # scale image to [0, 1] floats (or you could also scale to [0, 255] ints)
         else:
-            plt.imshow(predictions[i, :, :, 0] * 0.5 + .5, cmap='gray')  # scale image to [0, 1] floats (or you could also scale to [0, 255] ints)
+            plt.imshow(predictions[i, :, :, 0] * 0.5 + .5,
+                       cmap='gray')  # scale image to [0, 1] floats (or you could also scale to [0, 255] ints)
         plt.axis('off')
     plt.suptitle(f'Epoch {epoch}')
     output_folder = './images/'
     plt.savefig(output_folder + 'image_at_epoch_{:04d}.png'.format(epoch))
-    #plt.show()
+    # plt.show()
 
-train(train_dataset, epochs=10000, save_after=100)
+
+train(train_dataset, epochs=10000, save_after=100, model_name="test_pokemon2")
