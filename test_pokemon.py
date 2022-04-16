@@ -17,6 +17,16 @@ LATENT_SPACE_DIM = 100  # dimensions of the latent space that is used to generat
 
 assert IMAGE_SIZE % 4 == 0
 
+generator_optimizer = tf.keras.optimizers.Adam(1e-4)
+discriminator_optimizer = tf.keras.optimizers.Adam(1e-4)
+
+# This method returns a helper function to compute cross entropy loss
+cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+
+num_examples_to_generate = 16
+# We will reuse this seed overtime (so it's easier)
+# to visualize progress in the animated GIF)
+seed = tf.random.normal([num_examples_to_generate, LATENT_SPACE_DIM])
 
 def preprocess(file_path):
     # load the raw data from the file as a string
@@ -41,14 +51,6 @@ def configure_for_performance(ds):
     ds = ds.batch(BATCH_SIZE)
     ds = ds.prefetch(buffer_size=AUTOTUNE)
     return ds
-
-
-list_ds = tf.data.Dataset.list_files(str('./dataset_pokemon/images/*/*'),
-                                     shuffle=True)  # Get all images from subfolders
-train_dataset = list_ds.take(-1)
-# Set `num_parallel_calls` so multiple images are loaded/processed in parallel.
-train_dataset = train_dataset.map(preprocess, num_parallel_calls=AUTOTUNE)
-train_dataset = configure_for_performance(train_dataset)
 
 
 def make_generator_model():
@@ -93,14 +95,8 @@ def make_discriminator_model():
     return model
 
 
-generator_optimizer = tf.keras.optimizers.Adam(1e-4)
-discriminator_optimizer = tf.keras.optimizers.Adam(1e-4)
-
 discriminator = make_discriminator_model()
 generator = make_generator_model()
-
-# This method returns a helper function to compute cross entropy loss
-cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 
 
 def discriminator_loss(real_output, fake_output):
@@ -137,12 +133,6 @@ def train_step(images):
         discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
 
 
-num_examples_to_generate = 16
-# We will reuse this seed overtime (so it's easier)
-# to visualize progress in the animated GIF)
-seed = tf.random.normal([num_examples_to_generate, LATENT_SPACE_DIM])
-
-
 def train(dataset, epochs, save_after, model_name):
     generator.save(r"./modeles/" + model_name)
     generate_and_save_images(generator,
@@ -167,8 +157,6 @@ def train(dataset, epochs, save_after, model_name):
                              seed)
 
 
-
-
 def generate_and_save_images(model, epoch, test_input):
     # Notice `training` is set to False.
     # This is so all layers run in inference mode (batchnorm).
@@ -191,4 +179,15 @@ def generate_and_save_images(model, epoch, test_input):
     # plt.show()
 
 
-train(train_dataset, epochs=10000, save_after=100, model_name="test_pokemon2")
+def train_model(dataset_path, model_name, epochs, save_after):
+
+    list_ds = tf.data.Dataset.list_files(str(dataset_path + '/*'), shuffle=True)  # Get all images from subfolders
+    train_dataset = list_ds.take(-1)
+    # Set `num_parallel_calls` so multiple images are loaded/processed in parallel.
+    train_dataset = train_dataset.map(preprocess, num_parallel_calls=AUTOTUNE)
+    train_dataset = configure_for_performance(train_dataset)
+
+    train(train_dataset, epochs, save_after, model_name)
+
+
+train_model(dataset_path='./dataset_pokemon', model_name='test_pokemon3', epochs=10, save_after=1)
