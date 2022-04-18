@@ -14,6 +14,7 @@ import sys
 
 from enum import Enum
 
+
 class Preprocess(Enum):
     NONE = 1
     LEFT_ROTATE = 2
@@ -24,8 +25,8 @@ class Preprocess(Enum):
 
 
 BATCH_SIZE = 128
-IMAGE_SIZE = 120  # reduce this to increase performance
-IMAGE_CHANNELS = 3  # can be 3 (RGB) or 1 (Grayscale)
+IMAGE_SIZE = 120
+IMAGE_CHANNELS = 1  # can be 3 (RGB) or 1 (Grayscale)
 LATENT_SPACE_DIM = 100  # dimensions of the latent space that is used to generate the images
 
 assert IMAGE_SIZE % 4 == 0
@@ -40,6 +41,7 @@ num_examples_to_generate = 16
 # We will reuse this seed overtime (so it's easier)
 # to visualize progress in the animated GIF)
 seed = tf.random.normal([num_examples_to_generate, LATENT_SPACE_DIM])
+
 
 def preprocess(file_path):
     # load the raw data from the file as a string
@@ -94,7 +96,8 @@ def make_generator_model():
 def make_discriminator_model():
     model = tf.keras.Sequential()
     model.add(
-        layers.Conv2D(64, (5, 5), strides=(2, 2), padding='same', input_shape=(IMAGE_SIZE, IMAGE_SIZE, IMAGE_CHANNELS)))
+        layers.Conv2D(64, (5, 5), strides=(2, 2), padding='same',
+                      input_shape=(IMAGE_SIZE, IMAGE_SIZE, IMAGE_CHANNELS)))
     model.add(layers.LeakyReLU())
     model.add(layers.Dropout(0.3))
 
@@ -151,7 +154,6 @@ def train(dataset, epochs, save_after, model_name):
     generate_and_save_images(generator,
                              0,
                              seed)
-
     for epoch in range(epochs):
         for image_batch in dataset:
             train_step(image_batch)
@@ -196,7 +198,6 @@ def generate_and_save_images(model, epoch, test_input, show=False, save=True):
 
 
 def apply_preprocess(dataset_path, preprocesses):
-
     # create the temporary folder if not exist
     temp_dir_path = './temp'
     if not os.path.exists(temp_dir_path):
@@ -205,19 +206,13 @@ def apply_preprocess(dataset_path, preprocesses):
         for f in os.listdir(temp_dir_path):
             os.remove(os.path.join(temp_dir_path, f))
 
-    # calculate the minimum dimensions
-    min_width = sys.maxsize
-    min_height = sys.maxsize
-    for imageName in os.listdir(dataset_path):
-        img = cv2.imread(dataset_path + '/' + imageName, cv2.IMREAD_UNCHANGED)
-        min_width = min(min_width, img.shape[1])
-        min_height = min(min_height, img.shape[0])
-    dim = (min_width, min_height)
+    imageNames = os.listdir(dataset_path)
+    print("Nb images avant preprocess : " + str(len(imageNames)))
 
-    for imageName in os.listdir(dataset_path):
+    for imageName in imageNames:
         img = cv2.imread(dataset_path + '/' + imageName, cv2.IMREAD_UNCHANGED)
         # resize image
-        img = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
+        #img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
         # save the image
         cv2.imwrite(temp_dir_path + '/' + imageName, img)
 
@@ -245,13 +240,13 @@ def apply_preprocess(dataset_path, preprocesses):
 
 
 def train_model(dataset_path, model_name, epochs, save_after, preprocesses=[]):
-
     temp_dir_path = apply_preprocess(dataset_path, preprocesses)
 
-    list_ds = tf.data.Dataset.list_files(str(temp_dir_path + '/*'), shuffle=True)  # Get all images from subfolders
+    list_ds = tf.data.Dataset.list_files(str(temp_dir_path + '/*'), shuffle=True)  # Get all images
     train_dataset = list_ds.take(-1)
     # Set `num_parallel_calls` so multiple images are loaded/processed in parallel.
     train_dataset = train_dataset.map(preprocess, num_parallel_calls=AUTOTUNE)
+    print("Nb images après preprocess : " + str(len(train_dataset)))
     train_dataset = configure_for_performance(train_dataset)
 
     train(train_dataset, epochs, save_after, model_name)
@@ -263,5 +258,5 @@ def test_model(model_path):
     generate_and_save_images(model, -1, seed, True, False)
 
 
-train_model(dataset_path='./dataset_pokemon', model_name='test_pokemon4', epochs=10, save_after=1, preprocesses=[Preprocess.HORIZONTAL_FLIP])
-#test_model("./modeles/test_pokemon3")
+train_model(dataset_path='./manga_faces', model_name='test_manga1', epochs=10000, save_after=100, preprocesses=[Preprocess.HORIZONTAL_FLIP])
+# test_model("./modeles/test_pokemon3")
