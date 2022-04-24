@@ -26,7 +26,7 @@ class Preprocess(Enum):
 
 BATCH_SIZE = 128
 IMAGE_SIZE = 120
-IMAGE_CHANNELS = 1  # can be 3 (RGB) or 1 (Grayscale)
+IMAGE_CHANNELS = 3  # can be 3 (RGB) or 1 (Grayscale)
 LATENT_SPACE_DIM = 100  # dimensions of the latent space that is used to generate the images
 
 assert IMAGE_SIZE % 4 == 0
@@ -150,7 +150,6 @@ def train_step(images):
 
 
 def train(dataset, epochs, save_after, model_name):
-    generator.save(r"./modeles/" + model_name)
     generate_and_save_images(generator,
                              0,
                              seed)
@@ -171,6 +170,8 @@ def train(dataset, epochs, save_after, model_name):
                              epochs,
                              seed)
 
+    generator.save(r"./modeles/" + model_name)
+
 
 def generate_and_save_images(model, epoch, test_input, show=False, save=True):
     # Notice `training` is set to False.
@@ -183,9 +184,9 @@ def generate_and_save_images(model, epoch, test_input, show=False, save=True):
         plt.subplot(4, 4, i + 1)
         if predictions.shape[-1] == 3:
             plt.imshow(
-                predictions[i] * 0.5 + .5)  # scale image to [0, 1] floats (or you could also scale to [0, 255] ints)
+                predictions[i] * 0.5 + 0.5)  # scale image to [0, 1] floats (or you could also scale to [0, 255] ints)
         else:
-            plt.imshow(predictions[i, :, :, 0] * 0.5 + .5,
+            plt.imshow(predictions[i, :, :, 0] * 0.5 + 0.5,
                        cmap='gray')  # scale image to [0, 1] floats (or you could also scale to [0, 255] ints)
         plt.axis('off')
     output_folder = './images/'
@@ -258,5 +259,16 @@ def test_model(model_path):
     generate_and_save_images(model, -1, seed, True, False)
 
 
-train_model(dataset_path='./manga_faces', model_name='test_manga1', epochs=10000, save_after=100, preprocesses=[Preprocess.HORIZONTAL_FLIP])
-# test_model("./modeles/test_pokemon3")
+def generate_image(model_path):
+    global seed
+    seed = tf.random.normal([num_examples_to_generate, LATENT_SPACE_DIM])
+    model = tf.keras.models.load_model(model_path)
+    predictions = model(seed, training=False)
+    for i in range(predictions.shape[0]):
+        if predictions.shape[-1] == 3:
+            return (predictions[i] * 0.5 + .5).numpy()  # scale image to [0, 1] floats (or you could also scale to [0, 255] ints)
+        else:
+            return (predictions[i, :, :, 0] * 0.5 + .5).numpy()  # scale image to [0, 1] floats (or you could also scale to [0, 255] ints)
+
+#train_model(dataset_path='./bdd_orc', model_name='test_orcs2', epochs=5000, save_after=100, preprocesses=[Preprocess.HORIZONTAL_FLIP])
+#test_model("./modeles/test_manga2")
